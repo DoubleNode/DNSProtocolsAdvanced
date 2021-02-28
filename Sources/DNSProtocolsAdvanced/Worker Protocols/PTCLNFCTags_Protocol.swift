@@ -10,15 +10,16 @@
 import CoreNFC
 #endif
 import DNSCoreThreading
+import DNSError
 import DNSProtocols
 import Foundation
 
 public enum PTCLNFCTagsError: Error
 {
-    case unknown(domain: String, file: String, line: String, method: String)
-    case notSupported(domain: String, file: String, line: String, method: String)
-    case systemError(error: Error, domain: String, file: String, line: String, method: String)
-    case timeout(domain: String, file: String, line: String, method: String)
+    case unknown(_ codeLocation: DNSCodeLocation)
+    case notSupported(_ codeLocation: DNSCodeLocation)
+    case systemError(error: Error, _ codeLocation: DNSCodeLocation)
+    case timeout(_ codeLocation: DNSCodeLocation)
 }
 
 extension PTCLNFCTagsError: DNSError {
@@ -33,41 +34,37 @@ extension PTCLNFCTagsError: DNSError {
     
     public var nsError: NSError! {
         switch self {
-        case .unknown(let domain, let file, let line, let method):
-            let userInfo: [String : Any] = [
-                "DNSDomain": domain, "DNSFile": file, "DNSLine": line, "DNSMethod": method,
-                NSLocalizedDescriptionKey: self.errorDescription ?? "Unknown Error"
-            ]
+        case .unknown(let codeLocation):
+            var userInfo = codeLocation.userInfo
+            userInfo[NSLocalizedDescriptionKey] = self.errorString
             return NSError.init(domain: Self.domain,
                                 code: Self.Code.unknown.rawValue,
                                 userInfo: userInfo)
-        case .notSupported(let domain, let file, let line, let method):
-            let userInfo: [String : Any] = [
-                "DNSDomain": domain, "DNSFile": file, "DNSLine": line, "DNSMethod": method,
-                NSLocalizedDescriptionKey: self.errorDescription ?? "Unknown Error"
-            ]
+        case .notSupported(let codeLocation):
+            var userInfo = codeLocation.userInfo
+            userInfo[NSLocalizedDescriptionKey] = self.errorString
             return NSError.init(domain: Self.domain,
                                 code: Self.Code.notSupported.rawValue,
                                 userInfo: userInfo)
-        case .systemError(let error, let domain, let file, let line, let method):
-            let userInfo: [String : Any] = [
-                "Error": error, "DNSDomain": domain, "DNSFile": file, "DNSLine": line, "DNSMethod": method,
-                NSLocalizedDescriptionKey: self.errorDescription ?? "Unknown Error"
-            ]
+        case .systemError(let error, let codeLocation):
+            var userInfo = codeLocation.userInfo
+            userInfo["Error"] = error
+            userInfo[NSLocalizedDescriptionKey] = self.errorString
             return NSError.init(domain: Self.domain,
                                 code: Self.Code.systemError.rawValue,
                                 userInfo: userInfo)
-        case .timeout(let domain, let file, let line, let method):
-            let userInfo: [String : Any] = [
-                "DNSDomain": domain, "DNSFile": file, "DNSLine": line, "DNSMethod": method,
-                NSLocalizedDescriptionKey: self.errorDescription ?? "Unknown Error"
-            ]
+        case .timeout(let codeLocation):
+            var userInfo = codeLocation.userInfo
+            userInfo[NSLocalizedDescriptionKey] = self.errorString
             return NSError.init(domain: Self.domain,
                                 code: Self.Code.timeout.rawValue,
                                 userInfo: userInfo)
         }
     }
     public var errorDescription: String? {
+        return self.errorString
+    }
+    public var errorString: String {
         switch self {
         case .unknown:
             return NSLocalizedString("NFC-Unknown Error", comment: "")
@@ -75,7 +72,7 @@ extension PTCLNFCTagsError: DNSError {
         case .notSupported:
             return NSLocalizedString("NFC-Not Supported", comment: "")
                 + " (\(Self.domain):\(Self.Code.notSupported.rawValue))"
-        case .systemError(let error, _, _, _, _):
+        case .systemError(let error, _):
             return String(format: NSLocalizedString("NFC-System Error: %@", comment: ""), error.localizedDescription)
                 + " (\(Self.domain):\(Self.Code.systemError.rawValue))"
         case .timeout:
@@ -85,14 +82,11 @@ extension PTCLNFCTagsError: DNSError {
     }
     public var failureReason: String? {
         switch self {
-        case .unknown(let domain, let file, let line, let method):
-            return "\(domain):\(file):\(line):\(method)"
-        case .notSupported(let domain, let file, let line, let method):
-            return "\(domain):\(file):\(line):\(method)"
-        case .systemError(_, let domain, let file, let line, let method):
-            return "\(domain):\(file):\(line):\(method)"
-        case .timeout(let domain, let file, let line, let method):
-            return "\(domain):\(file):\(line):\(method)"
+        case .unknown(let codeLocation),
+             .notSupported(let codeLocation),
+             .systemError(_, let codeLocation),
+             .timeout(let codeLocation):
+            return codeLocation.failureReason
         }
     }
 }
