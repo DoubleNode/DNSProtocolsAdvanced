@@ -14,15 +14,15 @@ import DNSError
 import DNSProtocols
 import Foundation
 
-public enum PTCLNFCTagsError: Error
-{
+public extension DNSError {
+    typealias NFCTags = DNSNFCTagsError
+}
+public enum DNSNFCTagsError: DNSError {
     case unknown(_ codeLocation: DNSCodeLocation)
     case notSupported(_ codeLocation: DNSCodeLocation)
     case systemError(error: Error, _ codeLocation: DNSCodeLocation)
     case timeout(_ codeLocation: DNSCodeLocation)
-}
 
-extension PTCLNFCTagsError: DNSError {
     public static let domain = "NFC"
     public enum Code: Int
     {
@@ -91,17 +91,22 @@ extension PTCLNFCTagsError: DNSError {
     }
 }
 
-// (object: Any?, error: Error?)
-public typealias PTCLNFCTagsBlockVoidArrayNFCNDEFMessageDNSError = ([NFCNDEFMessage], DNSError?) -> Void
+public typealias PTCLNFCTagsResultArrayNFCNDEFMessage =
+    Result<[NFCNDEFMessage], DNSError.NFCTags>
+public typealias PTCLNFCTagsBlockVoidArrayNFCNDEFMessage =
+    (PTCLNFCTagsResultArrayNFCNDEFMessage) -> Void
 
-public protocol PTCLNFCTags_Protocol: PTCLBase_Protocol {
-    var nextWorker: PTCLNFCTags_Protocol? { get }
-    
+public protocol PTCLNFCTags: PTCLProtocolBase {
+    var callNextWhen: PTCLProtocol.Call.NextWhen { get }
+    var nextWorker: PTCLNFCTags? { get }
+
     init()
-    init(nextWorker: PTCLNFCTags_Protocol)
-    
+    func register(nextWorker: PTCLNFCTags,
+                  for callNextWhen: PTCLProtocol.Call.NextWhen)
+
     // MARK: - Business Logic / Single Item CRUD
+
     func doScanTags(for key: String,
                     with progress: PTCLProgressBlock?,
-                    and block: PTCLNFCTagsBlockVoidArrayNFCNDEFMessageDNSError?) throws
+                    and block: PTCLNFCTagsBlockVoidArrayNFCNDEFMessage?) throws
 }

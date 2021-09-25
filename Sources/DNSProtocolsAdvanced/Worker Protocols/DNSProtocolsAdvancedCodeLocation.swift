@@ -8,6 +8,9 @@
 
 import DNSError
 
+public extension DNSCodeLocation {
+    typealias protocolsAdvanced = DNSProtocolsAdvancedCodeLocation
+}
 open class DNSProtocolsAdvancedCodeLocation: DNSCodeLocation {
     override open class var domainPreface: String { "com.doublenode.protocolsAdvanced." }
 }
